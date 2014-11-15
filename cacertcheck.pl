@@ -33,14 +33,12 @@ use Date::Parse;
 
 sub process_cert();
 
-my $filename;
 my $verbose = 0;
 my $criticaldays = 30;
 my $warningdays  = 90;
 my $printcert = 0;
 my $help = 0;
 my $result = GetOptions(
-  "f|filename:s" => \$filename,
   "w|warning:i"  => \$warningdays,
   "c|critical:i" => \$criticaldays,
   "v|verbose+"   => \$verbose,
