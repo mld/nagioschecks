@@ -46,13 +46,6 @@ my $result = GetOptions(
   "h|help!"      => \$help,
 );
 
-print "verbose:      $verbose\n";
-print "filename:     $filename\n" if $filename;
-print "help:         $help\n";
-print "printcert:    $printcert\n";
-print "criticaldays: $criticaldays\n";
-print "warningdays:  $warningdays\n";
-
 my $now      = `date +%s`;
 my $warning  = $now + $warningdays  * 86400;
 my $critical = $now + $criticaldays * 86400;
