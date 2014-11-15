@@ -27,7 +27,9 @@
 use strict;
 use warnings;
 use POSIX;
+use Time::Local;
 use Getopt::Long qw(:config bundling);
+use Date::Parse;
 
 sub process_cert();
 
@@ -46,7 +48,7 @@ my $result = GetOptions(
   "h|help!"      => \$help,
 );
 
-my $now      = `date +%s`;
+my $now      = time();
 my $warning  = $now + $warningdays  * 86400;
 my $critical = $now + $criticaldays * 86400;
 my $ifile    = "";
@@ -57,43 +59,27 @@ my $ok       = 0;
 
 if($help) {
   my $USAGE = <<"USAGE";
-Usage: certcheck.pl [-w <days>|-c <days>|-v|-vv|-vvv|-p|-h|-f <cacertfile>]
+Usage: cacertcheck.pl [-w <days>|-c <days>|-v|-vv|-vvv|-p|-h] [<filename>]
 
 Options:
-  -f, --filename <file>	Filename to check for certificates, or if not given, read from STDIN
   -w, --warning <days>	Days a certificate needs to be valid before a warning is given.
   -c, --critical <days>	Days a certificate needs to be valid before a critical is given.
   -v, --verbose		Shows more information each time it is given.
   -p, --printcert	In combination with -v, prints the certificate raw data.
   -h, --help		Prints this message.
-
 USAGE
 
-  die $USAGE;
+  die $USAGE . "\n";
 }
 
-if($filename) {
-  open IN, "<$filename" or die("Unable to open \"$filename\"\n");
-  while(<IN>) { 
-    $ifile .= $_; 
-    $thisfile .= $_;
-    if($_ =~ /^\-+END(\s\w+)?\sCERTIFICATE\-+$/) {
-      &process_cert($thisfile);
-      $thisfile = "";
-    }
+while(<>) { 
+  $ifile .= $_; 
+  $thisfile .= $_;
+  if($_ =~ /^\-+END(\s\w+)?\sCERTIFICATE\-+$/) {
+    &process_cert($thisfile);
+    $thisfile = "";
   }
-  close IN;
 }
-else {
-  while(<STDIN>) { 
-    $ifile .= $_; 
-    $thisfile .= $_;
-    if($_ =~ /^\-+END(\s\w+)?\sCERTIFICATE\-+$/) {
-      &process_cert($thisfile);
-      $thisfile = "";
-    }
-  }
-} 
 
 if($crit > 0) {
   print "CRITICAL - $crit certificates expires within $criticaldays days!\n";
@@ -116,12 +102,12 @@ sub process_cert() {
   $thisfile = shift;
 
   my $currentcert = `echo "$thisfile" | openssl x509 -noout -issuer -subject -enddate`;
-  $currentcert =~ /issuer=(.*)\nsubject=(.*)\nnotAfter=(.*)/;
+  $currentcert =~ /issuer=(.*)\nsubject=(.*)\nnotAfter=(.*)/ or next;
 
   my $issuer = $1;
   my $subject = $2;
   my $enddate = $3;
-  my $notAfter = `date +%s -d '$3'`;
+  my $notAfter = str2time($enddate);
 
   my $expiresindays = floor(($notAfter - $now) / 86400);
   if($notAfter < $critical) {
@@ -139,5 +125,6 @@ sub process_cert() {
     print $thisfile if $verbose > 2 and $printcert;
     $ok++;
   }
+  return;
 }
 
